@@ -1,3 +1,13 @@
+# ### Day 1: Get `print8.ls8` running
+
+# - [ ] Inventory what is here
+# - [ ] Implement the `CPU` constructor
+# - [ ] Add RAM functions `ram_read()` and `ram_write()`
+# - [ ] Implement the core of `run()`
+# - [ ] Implement the `HLT` instruction handler
+# - [ ] Add the `LDI` instruction
+# - [ ] Add the `PRN` instruction
+
 """CPU functionality."""
 
 import sys
@@ -7,8 +17,37 @@ class CPU:
 
     def __init__(self):
         """Construct a new CPU."""
+        self.ram =  [0] * 256               
+        self.reg = [0] * 8                  
+        self.pc = 0                         
+        self.halted = False                 
+
+    def ram_read(self, mar):               # MAR (Memory Address Register)
+        return self.ram[mar]               
+
+    def ram_write(self, mar, mdr):         # MDR (Memory Data Register)
+        self.ram[mar] = mdr                
+
+    # Load "Immediate"
+    def LDI(self):
         pass
 
+    # Print
+    def PRN(self, mar):
+        print(self.ram_read(mar))
+
+    # Halt
+    def HLT(self):
+        self.halted = True
+
+    # Run
+    def run(self):
+        """Run the CPU."""
+        while self.halted == False:
+            self.reg[-1] = 0xF4
+            self.pc = 0
+            self.fl = 0
+            
     def load(self):
         """Load a program into memory."""
 

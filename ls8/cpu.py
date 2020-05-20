@@ -1,13 +1,3 @@
-# ### Day 1: Get `print8.ls8` running
-
-# - [ ] Inventory what is here
-# - [ ] Implement the `CPU` constructor
-# - [ ] Add RAM functions `ram_read()` and `ram_write()`
-# - [ ] Implement the core of `run()`
-# - [ ] Implement the `HLT` instruction handler
-# - [ ] Add the `LDI` instruction
-# - [ ] Add the `PRN` instruction
-
 """CPU functionality."""
 
 import sys
@@ -16,59 +6,108 @@ class CPU:
     """Main CPU class."""
 
     def __init__(self):
-        """Construct a new CPU."""
-        self.ram =  [0] * 256               
-        self.reg = [0] * 8                  
-        self.pc = 0                         
-        self.halted = False                 
+        self.ram = [0] * 256
+        self.reg = [0] * 8
+        self.pc = self.reg[0]
+        self.commands = {
+            0b00000001: self.hlt,
+            0b10000010: self.ldi,
+            0b01000111: self.prn
+        }
 
-    def ram_read(self, mar):               # MAR (Memory Address Register)
-        return self.ram[mar]               
+    def ram_read(self, address):
+        return self.ram[address]
 
-    def ram_write(self, mar, mdr):         # MDR (Memory Data Register)
-        self.ram[mar] = mdr                
+    def ram_write(self, value, address):
+        self.ram[address] = value
 
-    # Load "Immediate"
-    def LDI(self):
-        pass
+    def hlt(self, operand_a, operand_b):
+        return (0, False)
 
-    # Print
-    def PRN(self, mar):
-        print(self.ram_read(mar))
+    def ldi(self, operand_a, operand_b):
+        self.reg[operand_a] = operand_b
+        return (3, True)
 
-    # Halt
-    def HLT(self):
-        self.halted = True
+    def prn(self, operand_a, operand_b):
+        print(self.reg[operand_a])
+        return (2, True)
 
-    # Run
     def run(self):
-        """Run the CPU."""
-        while self.halted == False:
-            self.reg[-1] = 0xF4
-            self.pc = 0
-            self.fl = 0
-            
-    def load(self):
-        """Load a program into memory."""
-
         address = 0
 
-        # For now, we've just hardcoded a program:
+        running = True
 
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
+        while running:
+            ir = self.ram[self.pc]
 
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+            operand_a = self.ram_read(self.pc + 1)
+            operand_b = self.ram_read(self.pc + 2)
 
+            try:
+                operation_output = self.commands[ir](operand_a, operand_b)
+                running = operation_output[1]
+                self.pc += operation_output[0]
+
+            except:
+                print(f"command: {ir}")
+                sys.exit()
+        
+        # HLT = False
+
+        # while not HLT:
+        #     IR = self.ram_read(address) #instruction register
+        #     operand_a = self.ram_read(address + 1)
+        #     operand_b = self.ram_read(address + 2)
+        #     #LDI
+        #     if IR == self.LDI:
+        #         self.reg[operand_a] = operand_b
+        #         address += 3
+        #     #PRN
+        #     elif IR == self.PRN:
+        #         print(int(self.reg[operand_a]))
+        #         address += 2
+        #     #HLT
+        #     elif IR == self.HLT:
+        #         HLT = True
+
+    # def load(self, location):
+    #     """Load a program into memory."""
+
+    #     address = 0
+
+    #     # For now, we've just hardcoded a program:
+    #     code = open(location, 'r')
+    #     lines = code.readlines()
+    #     program = []
+
+    #     for line in lines:
+    #         if line[0] == '1' or line[0] == '0':
+    #             program.append(int(line[:8], 2))
+    #     for instruction in program:
+    #         self.ram[address] = instruction
+    #         address += 1
+
+
+    def load(self):
+            """Load a program into memory."""
+
+            address = 0
+
+            # For now, we've just hardcoded a program:
+
+            program = [
+                # From print8.ls8
+                0b10000010, # LDI R0,8
+                0b00000000,
+                0b00001000,
+                0b01000111, # PRN R0
+                0b00000000,
+                0b00000001, # HLT
+            ]
+
+            for instruction in program:
+                self.ram[address] = instruction
+                address += 1
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -99,6 +138,5 @@ class CPU:
 
         print()
 
-    def run(self):
-        """Run the CPU."""
-        pass
+    
+    

@@ -1,3 +1,70 @@
+# SPRINT CHALLENGE MVP: 
+#  Add the CMP instruction and equal flag to your LS-8.
+#  Add the JMP instruction.
+#  Add the JEQ and JNE instructions.
+
+### CMP
+
+# *This is an instruction handled by the ALU.*
+
+# `CMP registerA registerB`
+
+# Compare the values in two registers.
+
+# * If they are equal, set the Equal `E` flag to 1, otherwise set it to 0.
+
+# * If registerA is less than registerB, set the Less-than `L` flag to 1,
+#   otherwise set it to 0.
+
+# * If registerA is greater than registerB, set the Greater-than `G` flag
+#   to 1, otherwise set it to 0.
+
+# Machine code:
+# ```
+# 10100111 00000aaa 00000bbb
+# A7 0a 0b
+# ```
+
+### JMP
+
+# `JMP register`
+
+# Jump to the address stored in the given register.
+
+# Set the `PC` to the address stored in the given register.
+
+# Machine code:
+# ```
+# 01010100 00000rrr
+# 54 0r
+# ```
+
+### JNE
+
+# `JNE register`
+
+# If `E` flag is clear (false, 0), jump to the address stored in the given
+# register.
+
+# Machine code:
+# ```
+# 01010110 00000rrr
+# 56 0r
+# ```
+
+### JEQ
+
+# `JEQ register`
+
+# If `equal` flag is set (true), jump to the address stored in the given register.
+
+# Machine code:
+# ```
+# 01010101 00000rrr
+# 55 0r
+# ```
+
+
 """CPU functionality."""
 
 import sys
@@ -44,61 +111,9 @@ class CPU:
         self.JMP = 0b0100
         self.JNE = 0b0110
         self.JEQ = 0b0101
+        self.CALL = 0b0000
+        self.RET = 0b0001
         
-    def ram_read(self, address):
-        return self.ram[address]
-    
-    def ram_write(self, address, value):
-        self.ram[address] = value
-
-    def run(self):
-        address = 0
-        
-        HLT = False
-
-        while not HLT:
-            self.pc = address
-            IR = self.ram_read(address)
-            operand_a = self.ram_read(address + 1)
-            operand_b = self.ram_read(address + 2)
-            address_controller = ((IR & 0b11000000) >> 6) + 1
-            instruction = IR & 0b00001111
-            ALU = ((IR & 0b00100000) >> 5) 
-            CP = ((IR & 0b00010000) >> 4) 
-            #LDI
-            if ALU == 1:
-                if instruction in self.ALU_bt:
-                    self.alu(self.ALU_bt[instruction], operand_a, operand_b)
-                    address += address_controller
-                else:
-                    raise Exception("Unsupported ALU operation")
-            elif CP == 1:
-                raise Exception("Unsupported CP operation")
-            else:
-                if instruction == self.LDI:
-                    self.reg[operand_a] = operand_b 
-                    address += address_controller
-                
-                elif instruction == self.PRN:
-                    print(int(self.reg[operand_a]))
-                    address += address_controller
-                
-                elif instruction == self.HLT:
-                    HLT = True
-
-                # elif instruction == self.PUSH:
-                #     self.SP -= 1
-                #     self.ram_write(self.reg[self.SP], operand_a)
-                #     address += address_controller  
-
-                # elif instruction == self.POP:
-                #     byte = self.ram_read(self.reg[self.SP])
-                #     self.reg[operand_a] = byte
-                #     self.SP += 1
-                #     address += address_controller
-
-                else:
-                    raise Exception("Operation not supported")
 
     def load(self, location):
         """Load a program into memory."""
@@ -116,6 +131,7 @@ class CPU:
         for instruction in program:
             self.ram[address] = instruction
             address += 1
+
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -146,20 +162,16 @@ class CPU:
             self.reg[reg_a] = self.reg[reg_a] << self.reg[reg_b]
         elif op == 'SHR':
             self.reg[reg_a] = self.reg[reg_a] >> self.reg[reg_b]
+#CMP
         elif op == 'CMP':
-            if self.reg[reg_a] > self.reg[reg_a]:
+            
+            if self.reg[reg_a] > self.reg[reg_b]:
                 self.fl = 0b010
-            elif self.reg[reg_a] < self.reg[reg_a]:
+            elif self.reg[reg_a] < self.reg[reg_b]:
                 self.fl = 0b100
             else:
                 self.fl = 0b001
-        elif op == "TST":
-            if self.reg[reg_a] == self.reg[reg_b]:
-                print(f'Passed: {self.reg[reg_a]} == {self.reg[reg_b]}')
-            else:
-                print(f'Failed: {self.reg[reg_a]} != {self.reg[reg_b]}')
-        else:
-            raise Exception("Unsupported ALU operation")
+            
 
     def trace(self):
         """
@@ -169,8 +181,6 @@ class CPU:
 
         print(f"TRACE: %02X | %02X %02X %02X |" % (
             self.pc,
-            #self.fl,
-            #self.ie,
             self.ram_read(self.pc),
             self.ram_read(self.pc + 1),
             self.ram_read(self.pc + 2)
@@ -181,6 +191,89 @@ class CPU:
 
         print()
 
+    def run(self):
+        HLT = False
+
+        while not HLT:
+            
+            IR = self.ram_read(self.pc)
+            operand_a = self.ram_read(self.pc + 1)
+            operand_b = self.ram_read(self.pc + 2)
+            address_controller = ((IR & 0b11000000) >> 6) + 1
+            instruction = IR & 0b00001111
+            ALU = ((IR & 0b00100000) >> 5) 
+            PC = ((IR & 0b00010000) >> 4) 
+            #LDI
+            if ALU == 1:
+                if instruction in self.ALU_bt:
+                    self.alu(self.ALU_bt[instruction], operand_a, operand_b)
+                    self.pc += address_controller
+                else:
+                    raise Exception(f"{IR}Unsupported ALU operation")
+            elif PC == 1:
+                if instruction == self.CALL:
+                    
+                    pointer = self.pc + address_controller
+                    
+                    self.SP -= 1
+                    self.ram_write(self.SP, pointer)
+                    self.pc = self.reg[operand_a]
+                
+                elif instruction == self.RET:
+                    pointer = self.ram_read(self.SP)
+                    
+                    self.SP += 1
+                    self.pc = pointer    
+# JMP  
+                elif instruction == self.JMP:
+                    self.pc = self.reg[operand_a]
+# JEQ
+                elif instruction == self.JEQ:
+                    e_flag = self.fl & 0b00000001
+                    
+                    if e_flag == 1:
+                        self.pc = self.reg[operand_a]
+                    else:
+                        self.pc += address_controller
+# JNE 
+                elif instruction == self.JNE:
+                    e_flag = self.fl & 0b00000001
+                    
+                    if e_flag == 0:
+                        self.pc = self.reg[operand_a]
+                    else:
+                        self.pc += address_controller
+
+                else:
+                    raise Exception(f"{IR}CP operation is not supported")
+            else:
+                if instruction == self.LDI:
+                    self.reg[operand_a] = operand_b 
+                    self.pc += address_controller
+                
+                elif instruction == self.PRN:
+                    print(int(self.reg[operand_a]))
+                    self.pc += address_controller
+                
+                elif instruction == self.HLT:
+                    HLT = True
+
+                elif instruction == self.PUSH:
+                    self.SP -= 1
+                    self.ram_write(self.reg[self.SP], operand_a)
+                    self.pc += address_controller  
+
+                elif instruction == self.POP:
+                    byte = self.ram_read(self.reg[self.SP])
+                    self.reg[operand_a] = byte
+                    self.SP += 1
+                    self.pc += address_controller
+
+                else:
+                    
+                    raise Exception(f"Unsupported operation: {bin(IR)} at {self.pc}")
+    def ram_read(self, address):
+        return self.ram[address]
     
- 
-    
+    def ram_write(self, address, value):
+        self.ram[address] = value
